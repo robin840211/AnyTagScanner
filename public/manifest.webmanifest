@@ -8,13 +8,5 @@
   "background_color": "#090d11",
   "theme_color": "#090d11",
   "lang": "zh-Hant",
-  "categories": ["utilities", "productivity"],
-  "icons": [
-    {
-      "src": "og.png",
-      "sizes": "1792x1024",
-      "type": "image/png",
-      "purpose": "any"
-    }
-  ]
+  "categories": ["utilities", "productivity"]
 }

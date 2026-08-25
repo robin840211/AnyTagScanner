@@ -8,7 +8,6 @@ const siteUrl = new URL(
     ? `${configuredSiteUrl.replace(/\/$/, '')}/`
     : 'http://localhost:3000/',
 );
-const socialImageUrl = new URL('og.png', siteUrl).toString();
 const manifestUrl = new URL('manifest.webmanifest', siteUrl).toString();
 
 export const metadata: Metadata = {
@@ -32,20 +31,11 @@ export const metadata: Metadata = {
       '使用相機或圖片辨識 QR Code、常見條碼、ArUco Original 與 AprilTag 36h11。',
     url: siteUrl,
     siteName: 'TagScanner',
-    images: [
-      {
-        url: socialImageUrl,
-        width: 1792,
-        height: 1024,
-        alt: 'TagScanner 支援 QR、條碼、ArUco 與 AprilTag 辨識',
-      },
-    ],
   },
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary',
     title: 'TagScanner — QR、條碼與視覺標記辨識',
     description: '使用瀏覽器辨識常用條碼與 OpenCV 相容標記。',
-    images: [socialImageUrl],
   },
 };
 

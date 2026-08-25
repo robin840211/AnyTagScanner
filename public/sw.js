@@ -1,9 +1,8 @@
-const CACHE_NAME = 'tagscanner-v3';
+const CACHE_NAME = 'tagscanner-v4';
 const scopeUrl = new URL('./', self.registration.scope);
 const coreAssets = [
   scopeUrl.href,
   new URL('manifest.webmanifest', scopeUrl).href,
-  new URL('og.png', scopeUrl).href,
 ];
 
 self.addEventListener('install', (event) => {
