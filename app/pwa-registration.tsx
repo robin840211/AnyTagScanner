@@ -4,7 +4,11 @@ import { useEffect } from 'react';
 
 export default function PwaRegistration() {
   useEffect(() => {
-    if (!('serviceWorker' in navigator) || !window.isSecureContext) {
+    if (
+      process.env.NODE_ENV !== 'production' ||
+      !('serviceWorker' in navigator) ||
+      !window.isSecureContext
+    ) {
       return;
     }
 

@@ -17,6 +17,7 @@
 - 完成 ArUco 相機與圖片多標記辨識、ID 紀錄、疊圖與合成標記回歸測試。
 - 完成 tag36h11 AprilTag Web Worker／WebAssembly 相機與圖片辨識。
 - 固定 AprilTag 上游 commit、二進位校驗碼及 BSD 授權，移除執行階段 CDN 依賴。
+- 開發模式不註冊離線 Service Worker，避免舊版 HMR 資源干擾預覽。
 
 ## Next
 
