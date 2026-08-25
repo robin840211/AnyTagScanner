@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   metadataBase: siteUrl,
   title: 'TagScanner — QR、條碼與視覺標記掃描器',
   description:
-    '在手機或電腦瀏覽器中辨識 QR Code、一般條碼與 ArUco 標記，並持續擴充 AprilTag；影像只在目前裝置處理。',
+    '在手機或電腦瀏覽器中辨識 QR Code、一般條碼、ArUco 與 tag36h11 AprilTag；影像只在目前裝置處理。',
   applicationName: 'TagScanner',
   manifest: manifestUrl,
   keywords: ['QR Code', 'Barcode', 'ArUco', 'AprilTag', 'Scanner'],
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     locale: 'zh_TW',
     title: 'TagScanner — One view. Every mark.',
     description:
-      '跨裝置辨識 QR Code、一般條碼與 ArUco 標記，並持續擴充 AprilTag。',
+      '跨裝置辨識 QR Code、一般條碼、ArUco 與 tag36h11 AprilTag。',
     url: siteUrl,
     siteName: 'TagScanner',
     images: [

@@ -11,4 +11,6 @@ TagScanner includes the following direct runtime dependencies:
 | react | 19.2.6 | MIT | https://github.com/facebook/react |
 | react-dom | 19.2.6 | MIT | https://github.com/facebook/react |
 
+TagScanner also distributes a pinned `tag36h11` WebAssembly build from [apriltag-js-standalone](https://github.com/arenaxr/apriltag-js-standalone), which includes the AprilTag detector library. Its BSD 3-Clause and BSD 2-Clause notices, source commits and binary checksums are retained in [`public/vendor/apriltag`](public/vendor/apriltag/).
+
 完整授權文字隨各 npm package 發布，安裝後可在相應的 node_modules package 目錄查閱。

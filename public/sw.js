@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tagscanner-v1';
+const CACHE_NAME = 'tagscanner-v2';
 const scopeUrl = new URL('./', self.registration.scope);
 const coreAssets = [
   scopeUrl.href,

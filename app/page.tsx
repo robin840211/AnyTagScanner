@@ -1,7 +1,7 @@
 const supportedGroups = [
   { label: '2D', value: 'QR · Data Matrix · PDF417 · Aztec' },
   { label: '1D', value: 'EAN · UPC · Code 39/93/128 · ITF' },
-  { label: 'FID', value: 'ArUco Original / MIP 36h12 · AprilTag（NEXT）' },
+  { label: 'FID', value: 'ArUco Original / MIP 36h12 · AprilTag tag36h11' },
 ];
 
 export default function Home() {
@@ -34,8 +34,8 @@ export default function Home() {
             </h1>
           </div>
           <p className="intro">
-            現在可讀取 QR Code、常見條碼與 ArUco 標記，AprilTag
-            將在後續版本加入。影像留在目前裝置，手機與電腦皆可直接使用。
+            現在可讀取 QR Code、常見條碼、ArUco 與 tag36h11
+            AprilTag。影像留在目前裝置，手機與電腦皆可直接使用。
           </p>
         </div>
 

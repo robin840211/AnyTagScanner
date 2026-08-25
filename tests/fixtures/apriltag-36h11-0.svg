@@ -1,0 +1,5 @@
+<!-- Derived from tag36h11 ID 0 at the pinned apriltag-js-standalone revision. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" shape-rendering="crispEdges">
+  <rect width="400" height="400" fill="#fff"/>
+  <path fill="#000" d="M40 40h320v40H40z M40 80h40v40H40z M160 80h40v40h-40z M240 80h40v40h-40z M320 80h40v40h-40z M40 120h80v40H40z M240 120h40v40h-40z M320 120h40v40h-40z M40 160h80v40H40z M200 160h160v40H200z M40 200h40v40H40z M120 200h40v40h-40z M200 200h160v40H200z M40 240h80v40H40z M160 240h40v40h-40z M280 240h80v40h-80z M40 280h160v40H40z M240 280h120v40H240z M40 320h320v40H40z"/>
+</svg>

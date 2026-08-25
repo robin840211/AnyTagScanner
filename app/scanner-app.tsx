@@ -15,11 +15,11 @@ import {
   useRef,
   useState,
 } from 'react';
+import { AprilTagDetector } from './apriltag-engine';
 import { createArucoDetector } from './aruco-engine';
 import type {
   ArucoDetector,
   ArucoFamily,
-  ArucoMarker,
 } from './aruco-engine';
 import { isSafeWebUrl } from './scanner-utils';
 
@@ -43,6 +43,11 @@ type DetectionOverlay = {
   }>;
 };
 
+type FiducialMarker = {
+  id: number;
+  corners: Array<{ x: number; y: number }>;
+};
+
 const arucoFamilyLabels: Record<ArucoFamily, string> = {
   ARUCO: 'Original 5×5',
   ARUCO_MIP_36h12: 'MIP 36h12',
@@ -56,7 +61,7 @@ const modeOptions: Array<{
   { id: 'auto', label: 'AUTO CODE', available: true },
   { id: 'codes', label: 'QR / BARCODE', available: true },
   { id: 'aruco', label: 'ARUCO · BETA', available: true },
-  { id: 'apriltag', label: 'APRILTAG · NEXT', available: false },
+  { id: 'apriltag', label: 'APRILTAG · BETA', available: true },
 ];
 
 const cameraErrorMessages: Record<string, string> = {
@@ -93,11 +98,14 @@ export default function ScannerApp() {
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const rawStreamRef = useRef<MediaStream | null>(null);
-  const arucoTimerRef = useRef<number | null>(null);
+  const fiducialTimerRef = useRef<number | null>(null);
   const cameraRunRef = useRef(0);
   const arucoDetectorsRef = useRef(
     new Map<ArucoFamily, Promise<ArucoDetector>>(),
   );
+  const aprilTagDetectorStateRef = useRef<{
+    promise: Promise<AprilTagDetector> | null;
+  }>({ promise: null });
   const previewUrlRef = useRef('');
 
   const getReader = useCallback(() => {
@@ -123,6 +131,21 @@ export default function ScannerApp() {
     return detector;
   }, []);
 
+  const getAprilTagDetector = useCallback(() => {
+    const state = aprilTagDetectorStateRef.current;
+    if (!state.promise) {
+      const detector = new AprilTagDetector();
+      state.promise = detector.ready
+        .then(() => detector)
+        .catch((error) => {
+          state.promise = null;
+          detector.free();
+          throw error;
+        });
+    }
+    return state.promise;
+  }, []);
+
   const stopCamera = useCallback(() => {
     cameraRunRef.current += 1;
     controlsRef.current?.stop();
@@ -132,9 +155,9 @@ export default function ScannerApp() {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    if (arucoTimerRef.current !== null) {
-      window.clearTimeout(arucoTimerRef.current);
-      arucoTimerRef.current = null;
+    if (fiducialTimerRef.current !== null) {
+      window.clearTimeout(fiducialTimerRef.current);
+      fiducialTimerRef.current = null;
     }
     setTorchOn(false);
     setTorchSupported(false);
@@ -191,7 +214,7 @@ export default function ScannerApp() {
 
   const recordArucoMarkers = useCallback(
     (
-      markers: ArucoMarker[],
+      markers: FiducialMarker[],
       source: ScanSource,
       width: number,
       height: number,
@@ -237,6 +260,52 @@ export default function ScannerApp() {
     [],
   );
 
+  const recordAprilTagMarkers = useCallback(
+    (
+      markers: FiducialMarker[],
+      source: ScanSource,
+      width: number,
+      height: number,
+    ) => {
+      const now = Date.now();
+      const entries = markers.map<ScanEntry>((marker) => ({
+        id: `${now}-tag36h11-${marker.id}`,
+        text: String(marker.id),
+        format: 'APRILTAG 36H11',
+        scannedAt: now,
+        source,
+      }));
+
+      setOverlay({
+        width,
+        height,
+        shapes: markers.map((marker) => ({
+          points: marker.corners,
+          label: `ID ${marker.id}`,
+        })),
+      });
+      setLastResult(entries[0]);
+      setNotice(
+        markers.length === 1
+          ? `已辨識 AprilTag ID ${markers[0].id}`
+          : `已辨識 ${markers.length} 個 AprilTag`,
+      );
+      setHistory((current) => {
+        const freshEntries = entries.filter(
+          (entry) =>
+            !current.some(
+              (previous) =>
+                previous.text === entry.text &&
+                previous.format === entry.format &&
+                now - previous.scannedAt < 1500,
+            ),
+        );
+        return [...freshEntries, ...current].slice(0, 20);
+      });
+    },
+    [],
+  );
+
   const refreshDevices = useCallback(async () => {
     try {
       const available = await BrowserCodeReader.listVideoInputDevices();
@@ -253,12 +322,30 @@ export default function ScannerApp() {
     }
   }, [selectedDeviceId]);
 
-  const startArucoCamera = useCallback(
-    async (deviceId: string | undefined, runId: number) => {
+  const startFiducialCamera = useCallback(
+    async (
+      deviceId: string | undefined,
+      runId: number,
+      scannerMode: 'aruco' | 'apriltag',
+    ) => {
       let pendingStream: MediaStream | null = null;
 
       try {
-        const detector = await getArucoDetector(arucoFamily);
+        let detectMarkers: (
+          width: number,
+          height: number,
+          pixels: Uint8ClampedArray,
+        ) => Promise<FiducialMarker[]>;
+        if (scannerMode === 'aruco') {
+          const detector = await getArucoDetector(arucoFamily);
+          detectMarkers = async (width, height, pixels) =>
+            detector.detect(width, height, pixels);
+        } else {
+          const detector = await getAprilTagDetector();
+          detectMarkers = (width, height, pixels) =>
+            detector.detect(width, height, pixels);
+        }
+
         if (cameraRunRef.current !== runId) {
           return;
         }
@@ -301,7 +388,11 @@ export default function ScannerApp() {
           | undefined;
         setTorchSupported(Boolean(capabilities?.torch));
         setCameraState('scanning');
-        setNotice(`搜尋 ${arucoFamilyLabels[arucoFamily]} 標記`);
+        setNotice(
+          scannerMode === 'aruco'
+            ? `搜尋 ${arucoFamilyLabels[arucoFamily]} 標記`
+            : '搜尋 tag36h11 AprilTag',
+        );
         await refreshDevices();
 
         const processingCanvas = document.createElement('canvas');
@@ -313,11 +404,8 @@ export default function ScannerApp() {
         }
         let lastDetectionAt = 0;
 
-        const processFrame = () => {
-          if (
-            cameraRunRef.current !== runId ||
-            !rawStreamRef.current
-          ) {
+        const processFrame = async () => {
+          if (cameraRunRef.current !== runId || !rawStreamRef.current) {
             return;
           }
 
@@ -339,22 +427,39 @@ export default function ScannerApp() {
 
             try {
               const imageData = context.getImageData(0, 0, width, height);
-              const markers = detector.detect(width, height, imageData.data);
+              const markers = await detectMarkers(
+                width,
+                height,
+                imageData.data,
+              );
+              if (cameraRunRef.current !== runId || !rawStreamRef.current) {
+                return;
+              }
               if (markers.length) {
                 const inverseScale = 1 / scale;
-                recordArucoMarkers(
-                  markers.map((marker) => ({
-                    ...marker,
-                    corners: marker.corners.map((point) => ({
-                      x: point.x * inverseScale,
-                      y: point.y * inverseScale,
-                    })),
+                const scaledMarkers = markers.map((marker) => ({
+                  ...marker,
+                  corners: marker.corners.map((point) => ({
+                    x: point.x * inverseScale,
+                    y: point.y * inverseScale,
                   })),
-                  'camera',
-                  video.videoWidth,
-                  video.videoHeight,
-                  arucoFamily,
-                );
+                }));
+                if (scannerMode === 'aruco') {
+                  recordArucoMarkers(
+                    scaledMarkers,
+                    'camera',
+                    video.videoWidth,
+                    video.videoHeight,
+                    arucoFamily,
+                  );
+                } else {
+                  recordAprilTagMarkers(
+                    scaledMarkers,
+                    'camera',
+                    video.videoWidth,
+                    video.videoHeight,
+                  );
+                }
                 lastDetectionAt = performance.now();
               } else if (performance.now() - lastDetectionAt > 450) {
                 setOverlay(null);
@@ -362,15 +467,19 @@ export default function ScannerApp() {
             } catch {
               stopCamera();
               setCameraState('error');
-              setNotice('ArUco 辨識引擎發生錯誤，請重新啟用相機。');
+              setNotice(
+                scannerMode === 'aruco'
+                  ? 'ArUco 辨識引擎發生錯誤，請重新啟用相機。'
+                  : 'AprilTag 辨識引擎發生錯誤，請重新啟用相機。',
+              );
               return;
             }
           }
 
-          arucoTimerRef.current = window.setTimeout(processFrame, 160);
+          fiducialTimerRef.current = window.setTimeout(processFrame, 160);
         };
 
-        processFrame();
+        void processFrame();
       } catch (error) {
         pendingStream?.getTracks().forEach((track) => track.stop());
         if (cameraRunRef.current !== runId) {
@@ -384,13 +493,17 @@ export default function ScannerApp() {
         setCameraState('error');
         setNotice(
           cameraErrorMessages[errorName] ??
-            '無法啟用 ArUco 辨識，請檢查相機權限後重試。',
+            (scannerMode === 'aruco'
+              ? '無法啟用 ArUco 辨識，請檢查相機權限後重試。'
+              : '無法啟用 AprilTag 辨識，請檢查相機權限後重試。'),
         );
       }
     },
     [
       arucoFamily,
+      getAprilTagDetector,
       getArucoDetector,
+      recordAprilTagMarkers,
       recordArucoMarkers,
       refreshDevices,
       stopCamera,
@@ -410,12 +523,16 @@ export default function ScannerApp() {
       setOverlay(null);
       setCameraState('starting');
       setNotice(
-        mode === 'aruco' ? '正在載入 ArUco 引擎…' : '正在啟用相機…',
+        mode === 'aruco'
+          ? '正在載入 ArUco 引擎…'
+          : mode === 'apriltag'
+            ? '正在載入 AprilTag 引擎…'
+            : '正在啟用相機…',
       );
 
       const runId = cameraRunRef.current;
-      if (mode === 'aruco') {
-        await startArucoCamera(deviceId, runId);
+      if (mode === 'aruco' || mode === 'apriltag') {
+        await startFiducialCamera(deviceId, runId, mode);
         return;
       }
 
@@ -476,7 +593,7 @@ export default function ScannerApp() {
       mode,
       recordResult,
       refreshDevices,
-      startArucoCamera,
+      startFiducialCamera,
       stopCamera,
     ],
   );
@@ -531,7 +648,7 @@ export default function ScannerApp() {
           return;
         }
 
-        if (mode === 'aruco') {
+        if (mode === 'aruco' || mode === 'apriltag') {
           const canvas = document.createElement('canvas');
           const scale = Math.min(
             1,
@@ -552,38 +669,56 @@ export default function ScannerApp() {
             canvas.width,
             canvas.height,
           );
-          const detector = await getArucoDetector(arucoFamily);
+          const markers =
+            mode === 'aruco'
+              ? (await getArucoDetector(arucoFamily)).detect(
+                  canvas.width,
+                  canvas.height,
+                  imageData.data,
+                )
+              : await (await getAprilTagDetector()).detect(
+                  canvas.width,
+                  canvas.height,
+                  imageData.data,
+                );
           if (cameraRunRef.current !== runId) {
             return;
           }
-          const markers = detector.detect(
-            canvas.width,
-            canvas.height,
-            imageData.data,
-          );
 
           if (!markers.length) {
             setOverlay(null);
             setNotice(
-              `圖片中找不到 ${arucoFamilyLabels[arucoFamily]} ArUco 標記。`,
+              mode === 'aruco'
+                ? `圖片中找不到 ${arucoFamilyLabels[arucoFamily]} ArUco 標記。`
+                : '圖片中找不到 tag36h11 AprilTag。',
             );
             return;
           }
 
           const inverseScale = 1 / scale;
-          recordArucoMarkers(
-            markers.map((marker) => ({
-              ...marker,
-              corners: marker.corners.map((point) => ({
-                x: point.x * inverseScale,
-                y: point.y * inverseScale,
-              })),
+          const scaledMarkers = markers.map((marker) => ({
+            ...marker,
+            corners: marker.corners.map((point) => ({
+              x: point.x * inverseScale,
+              y: point.y * inverseScale,
             })),
-            'image',
-            image.naturalWidth,
-            image.naturalHeight,
-            arucoFamily,
-          );
+          }));
+          if (mode === 'aruco') {
+            recordArucoMarkers(
+              scaledMarkers,
+              'image',
+              image.naturalWidth,
+              image.naturalHeight,
+              arucoFamily,
+            );
+          } else {
+            recordAprilTagMarkers(
+              scaledMarkers,
+              'image',
+              image.naturalWidth,
+              image.naturalHeight,
+            );
+          }
           return;
         }
 
@@ -599,16 +734,20 @@ export default function ScannerApp() {
         setNotice(
           mode === 'aruco'
             ? '無法辨識這張圖片中的 ArUco 標記。'
-            : '圖片中找不到可辨識的 QR Code 或條碼。',
+            : mode === 'apriltag'
+              ? '無法辨識這張圖片中的 AprilTag。'
+              : '圖片中找不到可辨識的 QR Code 或條碼。',
         );
       }
     },
     [
       arucoFamily,
       clearPreviewUrl,
+      getAprilTagDetector,
       getArucoDetector,
       getReader,
       mode,
+      recordAprilTagMarkers,
       recordArucoMarkers,
       recordResult,
       stopCamera,
@@ -693,7 +832,9 @@ export default function ScannerApp() {
       setNotice(
         nextMode === 'aruco'
           ? `支援 ${arucoFamilyLabels[arucoFamily]} ArUco 標記`
-          : '相機只會在你按下按鈕後啟用',
+          : nextMode === 'apriltag'
+            ? '支援 tag36h11 AprilTag'
+            : '相機只會在你按下按鈕後啟用',
       );
     },
     [arucoFamily, clearPreviewUrl, mode, stopCamera],
@@ -797,6 +938,7 @@ export default function ScannerApp() {
 
   useEffect(() => {
     const detectors = arucoDetectorsRef.current;
+    const aprilTagDetectorState = aprilTagDetectorStateRef.current;
     const onVisibilityChange = () => {
       if (
         document.hidden &&
@@ -812,12 +954,15 @@ export default function ScannerApp() {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       controlsRef.current?.stop();
       rawStreamRef.current?.getTracks().forEach((track) => track.stop());
-      if (arucoTimerRef.current !== null) {
-        window.clearTimeout(arucoTimerRef.current);
+      if (fiducialTimerRef.current !== null) {
+        window.clearTimeout(fiducialTimerRef.current);
       }
       detectors.forEach((detectorPromise) => {
         detectorPromise.then((detector) => detector.free()).catch(() => {});
       });
+      aprilTagDetectorState.promise
+        ?.then((detector) => detector.free())
+        .catch(() => {});
       if (previewUrlRef.current) {
         URL.revokeObjectURL(previewUrlRef.current);
       }
