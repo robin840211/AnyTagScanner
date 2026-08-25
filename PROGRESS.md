@@ -2,7 +2,7 @@
 
 ## Current objective
 
-建立可直接發布到 GitHub Pages 的跨裝置 TagScanner，先交付 QR 與一般條碼掃描，再擴充 ArUco 與 AprilTag。
+建立可直接發布到 GitHub Pages 的跨裝置 TagScanner；目前交付 QR、一般條碼與 ArUco，下一階段擴充 AprilTag。
 
 ## Completed
 
@@ -13,10 +13,11 @@
 - 完成圖片辨識、ZXing 多格式解碼、結果疊圖、安全網址處理。
 - 完成工作階段歷史、JSON 匯出、隱私與第三方授權文件。
 - 建立 lint、type check、unit test 與 production build 驗證。
+- 完成 ArUco WebAssembly 技術驗證、Original 5×5 與 MIP 36h12 字典選擇。
+- 完成 ArUco 相機與圖片多標記辨識、ID 紀錄、疊圖與合成標記回歸測試。
 
 ## Next
 
-- 建立 ArUco WebAssembly 技術驗證與字典選擇。
 - 建立 AprilTag 36h11 第一版與完整 AprilTag 3 引擎評估。
 - 加入離線快取、PWA 圖示與安裝流程。
 - 建立真實手機、列印標記與低光測試集。
@@ -27,3 +28,4 @@
 - 相機在停止、離開前景與元件卸載時釋放。
 - 不自動上傳或持久保存影像與掃描內容。
 - 清晰 QR 與常見條碼可在手機及桌面瀏覽器完成辨識。
+- 合成 ArUco 標記可由 WebAssembly 引擎解碼，並在 GitHub Pages 子路徑載入。

@@ -15,6 +15,12 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createArucoDetector } from './aruco-engine';
+import type {
+  ArucoDetector,
+  ArucoFamily,
+  ArucoMarker,
+} from './aruco-engine';
 import { isSafeWebUrl } from './scanner-utils';
 
 type ScannerMode = 'auto' | 'codes' | 'aruco' | 'apriltag';
@@ -31,7 +37,15 @@ type ScanEntry = {
 type DetectionOverlay = {
   width: number;
   height: number;
-  points: Array<{ x: number; y: number }>;
+  shapes: Array<{
+    points: Array<{ x: number; y: number }>;
+    label?: string;
+  }>;
+};
+
+const arucoFamilyLabels: Record<ArucoFamily, string> = {
+  ARUCO: 'Original 5×5',
+  ARUCO_MIP_36h12: 'MIP 36h12',
 };
 
 const modeOptions: Array<{
@@ -39,9 +53,9 @@ const modeOptions: Array<{
   label: string;
   available: boolean;
 }> = [
-  { id: 'auto', label: 'AUTO', available: true },
+  { id: 'auto', label: 'AUTO CODE', available: true },
   { id: 'codes', label: 'QR / BARCODE', available: true },
-  { id: 'aruco', label: 'ARUCO · NEXT', available: false },
+  { id: 'aruco', label: 'ARUCO · BETA', available: true },
   { id: 'apriltag', label: 'APRILTAG · NEXT', available: false },
 ];
 
@@ -58,6 +72,7 @@ function formatName(format: BarcodeFormat) {
 
 export default function ScannerApp() {
   const [mode, setMode] = useState<ScannerMode>('auto');
+  const [arucoFamily, setArucoFamily] = useState<ArucoFamily>('ARUCO');
   const [cameraState, setCameraState] = useState<
     'off' | 'starting' | 'scanning' | 'image' | 'error'
   >('off');
@@ -77,6 +92,12 @@ export default function ScannerApp() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
+  const rawStreamRef = useRef<MediaStream | null>(null);
+  const arucoTimerRef = useRef<number | null>(null);
+  const cameraRunRef = useRef(0);
+  const arucoDetectorsRef = useRef(
+    new Map<ArucoFamily, Promise<ArucoDetector>>(),
+  );
   const previewUrlRef = useRef('');
 
   const getReader = useCallback(() => {
@@ -89,9 +110,32 @@ export default function ScannerApp() {
     return readerRef.current;
   }, []);
 
+  const getArucoDetector = useCallback((family: ArucoFamily) => {
+    const detectors = arucoDetectorsRef.current;
+    let detector = detectors.get(family);
+    if (!detector) {
+      detector = createArucoDetector(family).catch((error) => {
+        detectors.delete(family);
+        throw error;
+      });
+      detectors.set(family, detector);
+    }
+    return detector;
+  }, []);
+
   const stopCamera = useCallback(() => {
+    cameraRunRef.current += 1;
     controlsRef.current?.stop();
     controlsRef.current = null;
+    rawStreamRef.current?.getTracks().forEach((track) => track.stop());
+    rawStreamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    if (arucoTimerRef.current !== null) {
+      window.clearTimeout(arucoTimerRef.current);
+      arucoTimerRef.current = null;
+    }
     setTorchOn(false);
     setTorchSupported(false);
     setCameraState((current) => (current === 'image' ? current : 'off'));
@@ -122,7 +166,11 @@ export default function ScannerApp() {
         y: point.getY(),
       }));
 
-      setOverlay(points.length ? { width, height, points } : null);
+      setOverlay(
+        points.length
+          ? { width, height, shapes: [{ points, label: entry.format }] }
+          : null,
+      );
       setLastResult(entry);
       setNotice(`已辨識 ${entry.format}`);
       setHistory((current) => {
@@ -136,6 +184,54 @@ export default function ScannerApp() {
           return current;
         }
         return [entry, ...current].slice(0, 20);
+      });
+    },
+    [],
+  );
+
+  const recordArucoMarkers = useCallback(
+    (
+      markers: ArucoMarker[],
+      source: ScanSource,
+      width: number,
+      height: number,
+      family: ArucoFamily,
+    ) => {
+      const now = Date.now();
+      const format = `ARUCO ${arucoFamilyLabels[family].toUpperCase()}`;
+      const entries = markers.map<ScanEntry>((marker) => ({
+        id: `${now}-${family}-${marker.id}`,
+        text: String(marker.id),
+        format,
+        scannedAt: now,
+        source,
+      }));
+
+      setOverlay({
+        width,
+        height,
+        shapes: markers.map((marker) => ({
+          points: marker.corners,
+          label: `ID ${marker.id}`,
+        })),
+      });
+      setLastResult(entries[0]);
+      setNotice(
+        markers.length === 1
+          ? `已辨識 ArUco ID ${markers[0].id}`
+          : `已辨識 ${markers.length} 個 ArUco 標記`,
+      );
+      setHistory((current) => {
+        const freshEntries = entries.filter(
+          (entry) =>
+            !current.some(
+              (previous) =>
+                previous.text === entry.text &&
+                previous.format === entry.format &&
+                now - previous.scannedAt < 1500,
+            ),
+        );
+        return [...freshEntries, ...current].slice(0, 20);
       });
     },
     [],
@@ -157,6 +253,150 @@ export default function ScannerApp() {
     }
   }, [selectedDeviceId]);
 
+  const startArucoCamera = useCallback(
+    async (deviceId: string | undefined, runId: number) => {
+      let pendingStream: MediaStream | null = null;
+
+      try {
+        const detector = await getArucoDetector(arucoFamily);
+        if (cameraRunRef.current !== runId) {
+          return;
+        }
+
+        pendingStream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: deviceId
+            ? {
+                deviceId: { exact: deviceId },
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+              }
+            : {
+                facingMode: { ideal: 'environment' },
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+              },
+        });
+
+        if (cameraRunRef.current !== runId) {
+          pendingStream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        const video = videoRef.current;
+        if (!video) {
+          throw new Error('Video element is unavailable');
+        }
+
+        rawStreamRef.current = pendingStream;
+        video.srcObject = pendingStream;
+        await video.play();
+        if (cameraRunRef.current !== runId) {
+          return;
+        }
+
+        const videoTrack = pendingStream.getVideoTracks()[0];
+        const capabilities = videoTrack?.getCapabilities() as
+          | (MediaTrackCapabilities & { torch?: boolean })
+          | undefined;
+        setTorchSupported(Boolean(capabilities?.torch));
+        setCameraState('scanning');
+        setNotice(`搜尋 ${arucoFamilyLabels[arucoFamily]} 標記`);
+        await refreshDevices();
+
+        const processingCanvas = document.createElement('canvas');
+        const context = processingCanvas.getContext('2d', {
+          willReadFrequently: true,
+        });
+        if (!context) {
+          throw new Error('Canvas is unavailable');
+        }
+        let lastDetectionAt = 0;
+
+        const processFrame = () => {
+          if (
+            cameraRunRef.current !== runId ||
+            !rawStreamRef.current
+          ) {
+            return;
+          }
+
+          if (video.videoWidth && video.videoHeight) {
+            const scale = Math.min(
+              1,
+              720 / Math.max(video.videoWidth, video.videoHeight),
+            );
+            const width = Math.max(1, Math.round(video.videoWidth * scale));
+            const height = Math.max(1, Math.round(video.videoHeight * scale));
+            if (
+              processingCanvas.width !== width ||
+              processingCanvas.height !== height
+            ) {
+              processingCanvas.width = width;
+              processingCanvas.height = height;
+            }
+            context.drawImage(video, 0, 0, width, height);
+
+            try {
+              const imageData = context.getImageData(0, 0, width, height);
+              const markers = detector.detect(width, height, imageData.data);
+              if (markers.length) {
+                const inverseScale = 1 / scale;
+                recordArucoMarkers(
+                  markers.map((marker) => ({
+                    ...marker,
+                    corners: marker.corners.map((point) => ({
+                      x: point.x * inverseScale,
+                      y: point.y * inverseScale,
+                    })),
+                  })),
+                  'camera',
+                  video.videoWidth,
+                  video.videoHeight,
+                  arucoFamily,
+                );
+                lastDetectionAt = performance.now();
+              } else if (performance.now() - lastDetectionAt > 450) {
+                setOverlay(null);
+              }
+            } catch {
+              stopCamera();
+              setCameraState('error');
+              setNotice('ArUco 辨識引擎發生錯誤，請重新啟用相機。');
+              return;
+            }
+          }
+
+          arucoTimerRef.current = window.setTimeout(processFrame, 160);
+        };
+
+        processFrame();
+      } catch (error) {
+        pendingStream?.getTracks().forEach((track) => track.stop());
+        if (cameraRunRef.current !== runId) {
+          return;
+        }
+        const errorName =
+          error instanceof DOMException || error instanceof Error
+            ? error.name
+            : 'UnknownError';
+        stopCamera();
+        setCameraState('error');
+        setNotice(
+          cameraErrorMessages[errorName] ??
+            '無法啟用 ArUco 辨識，請檢查相機權限後重試。',
+        );
+      }
+    },
+    [
+      arucoFamily,
+      getArucoDetector,
+      recordArucoMarkers,
+      refreshDevices,
+      stopCamera,
+    ],
+  );
+
   const startCamera = useCallback(
     async (deviceId?: string) => {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -169,7 +409,15 @@ export default function ScannerApp() {
       clearPreviewUrl();
       setOverlay(null);
       setCameraState('starting');
-      setNotice('正在啟用相機…');
+      setNotice(
+        mode === 'aruco' ? '正在載入 ArUco 引擎…' : '正在啟用相機…',
+      );
+
+      const runId = cameraRunRef.current;
+      if (mode === 'aruco') {
+        await startArucoCamera(deviceId, runId);
+        return;
+      }
 
       try {
         const reader = getReader();
@@ -225,8 +473,10 @@ export default function ScannerApp() {
     [
       clearPreviewUrl,
       getReader,
+      mode,
       recordResult,
       refreshDevices,
+      startArucoCamera,
       stopCamera,
     ],
   );
@@ -270,11 +520,73 @@ export default function ScannerApp() {
       setPreviewUrl(objectUrl);
       setCameraState('image');
       setNotice('正在辨識圖片…');
+      const runId = cameraRunRef.current;
 
       try {
         const image = new Image();
         image.src = objectUrl;
         await image.decode();
+
+        if (cameraRunRef.current !== runId) {
+          return;
+        }
+
+        if (mode === 'aruco') {
+          const canvas = document.createElement('canvas');
+          const scale = Math.min(
+            1,
+            1600 / Math.max(image.naturalWidth, image.naturalHeight),
+          );
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          const context = canvas.getContext('2d', {
+            willReadFrequently: true,
+          });
+          if (!context) {
+            throw new Error('Canvas is unavailable');
+          }
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          const imageData = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height,
+          );
+          const detector = await getArucoDetector(arucoFamily);
+          if (cameraRunRef.current !== runId) {
+            return;
+          }
+          const markers = detector.detect(
+            canvas.width,
+            canvas.height,
+            imageData.data,
+          );
+
+          if (!markers.length) {
+            setOverlay(null);
+            setNotice(
+              `圖片中找不到 ${arucoFamilyLabels[arucoFamily]} ArUco 標記。`,
+            );
+            return;
+          }
+
+          const inverseScale = 1 / scale;
+          recordArucoMarkers(
+            markers.map((marker) => ({
+              ...marker,
+              corners: marker.corners.map((point) => ({
+                x: point.x * inverseScale,
+                y: point.y * inverseScale,
+              })),
+            })),
+            'image',
+            image.naturalWidth,
+            image.naturalHeight,
+            arucoFamily,
+          );
+          return;
+        }
+
         const result = await getReader().decodeFromImageElement(image);
         recordResult(
           result,
@@ -284,20 +596,44 @@ export default function ScannerApp() {
         );
       } catch {
         setOverlay(null);
-        setNotice('圖片中找不到可辨識的 QR Code 或條碼。');
+        setNotice(
+          mode === 'aruco'
+            ? '無法辨識這張圖片中的 ArUco 標記。'
+            : '圖片中找不到可辨識的 QR Code 或條碼。',
+        );
       }
     },
-    [clearPreviewUrl, getReader, recordResult, stopCamera],
+    [
+      arucoFamily,
+      clearPreviewUrl,
+      getArucoDetector,
+      getReader,
+      mode,
+      recordArucoMarkers,
+      recordResult,
+      stopCamera,
+    ],
   );
 
   const toggleTorch = useCallback(async () => {
-    const switchTorch = controlsRef.current?.switchTorch;
-    if (!switchTorch) {
-      return;
-    }
     const nextValue = !torchOn;
     try {
-      await switchTorch(nextValue);
+      const switchTorch = controlsRef.current?.switchTorch;
+      if (switchTorch) {
+        await switchTorch(nextValue);
+      } else {
+        const videoTrack = rawStreamRef.current?.getVideoTracks()[0];
+        if (!videoTrack) {
+          return;
+        }
+        await videoTrack.applyConstraints({
+          advanced: [
+            { torch: nextValue } as MediaTrackConstraintSet & {
+              torch: boolean;
+            },
+          ],
+        });
+      }
       setTorchOn(nextValue);
     } catch {
       setTorchSupported(false);
@@ -343,59 +679,145 @@ export default function ScannerApp() {
     URL.revokeObjectURL(url);
   }, [history]);
 
+  const selectMode = useCallback(
+    (nextMode: ScannerMode) => {
+      if (nextMode === mode) {
+        return;
+      }
+      stopCamera();
+      clearPreviewUrl();
+      setMode(nextMode);
+      setCameraState('off');
+      setLastResult(null);
+      setOverlay(null);
+      setNotice(
+        nextMode === 'aruco'
+          ? `支援 ${arucoFamilyLabels[arucoFamily]} ArUco 標記`
+          : '相機只會在你按下按鈕後啟用',
+      );
+    },
+    [arucoFamily, clearPreviewUrl, mode, stopCamera],
+  );
+
+  const changeArucoFamily = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      const family = event.target.value as ArucoFamily;
+      stopCamera();
+      clearPreviewUrl();
+      setArucoFamily(family);
+      setCameraState('off');
+      setLastResult(null);
+      setOverlay(null);
+      setNotice(`支援 ${arucoFamilyLabels[family]} ArUco 標記`);
+    },
+    [clearPreviewUrl, stopCamera],
+  );
+
   useEffect(() => {
     const canvas = overlayRef.current;
     if (!canvas) {
       return;
     }
-    const context = canvas.getContext('2d');
-    if (!context) {
-      return;
-    }
-
-    if (!overlay) {
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      return;
-    }
-
-    canvas.width = overlay.width;
-    canvas.height = overlay.height;
-    context.clearRect(0, 0, overlay.width, overlay.height);
-    context.strokeStyle = '#c8ff32';
-    context.fillStyle = '#c8ff32';
-    context.lineWidth = Math.max(3, overlay.width / 320);
-    context.shadowColor = 'rgba(200, 255, 50, 0.75)';
-    context.shadowBlur = 12;
-    context.beginPath();
-    overlay.points.forEach((point, index) => {
-      if (index === 0) {
-        context.moveTo(point.x, point.y);
-      } else {
-        context.lineTo(point.x, point.y);
+    const draw = () => {
+      const context = canvas.getContext('2d');
+      if (!context) {
+        return;
       }
-    });
-    if (overlay.points.length > 2) {
-      context.closePath();
-    }
-    context.stroke();
-    overlay.points.forEach((point) => {
-      context.beginPath();
-      context.arc(point.x, point.y, context.lineWidth * 1.4, 0, Math.PI * 2);
-      context.fill();
-    });
+
+      const pixelRatio = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(canvas.clientWidth * pixelRatio));
+      canvas.height = Math.max(1, Math.round(canvas.clientHeight * pixelRatio));
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      if (!overlay) {
+        return;
+      }
+
+      const scale = Math.min(
+        canvas.width / overlay.width,
+        canvas.height / overlay.height,
+      );
+      const offsetX = (canvas.width - overlay.width * scale) / 2;
+      const offsetY = (canvas.height - overlay.height * scale) / 2;
+      const lineWidth = Math.max(3 * pixelRatio, canvas.width / 320);
+
+      context.strokeStyle = '#c8ff32';
+      context.fillStyle = '#c8ff32';
+      context.lineWidth = lineWidth;
+      context.shadowColor = 'rgba(200, 255, 50, 0.75)';
+      context.shadowBlur = 12 * pixelRatio;
+
+      overlay.shapes.forEach((shape) => {
+        const points = shape.points.map((point) => ({
+          x: offsetX + point.x * scale,
+          y: offsetY + point.y * scale,
+        }));
+        context.beginPath();
+        points.forEach((point, index) => {
+          if (index === 0) {
+            context.moveTo(point.x, point.y);
+          } else {
+            context.lineTo(point.x, point.y);
+          }
+        });
+        if (points.length > 2) {
+          context.closePath();
+        }
+        context.stroke();
+        points.forEach((point) => {
+          context.beginPath();
+          context.arc(point.x, point.y, lineWidth * 1.4, 0, Math.PI * 2);
+          context.fill();
+        });
+
+        if (shape.label && points[0]) {
+          context.shadowBlur = 0;
+          context.font = `700 ${12 * pixelRatio}px ui-monospace, monospace`;
+          const labelWidth = context.measureText(shape.label).width;
+          const labelX = points[0].x;
+          const labelY = Math.max(18 * pixelRatio, points[0].y - 8 * pixelRatio);
+          context.fillStyle = 'rgba(4, 7, 8, 0.88)';
+          context.fillRect(
+            labelX - 4 * pixelRatio,
+            labelY - 14 * pixelRatio,
+            labelWidth + 8 * pixelRatio,
+            18 * pixelRatio,
+          );
+          context.fillStyle = '#c8ff32';
+          context.fillText(shape.label, labelX, labelY);
+          context.shadowBlur = 12 * pixelRatio;
+        }
+      });
+    };
+
+    draw();
+    const observer = new ResizeObserver(draw);
+    observer.observe(canvas);
+    return () => observer.disconnect();
   }, [overlay]);
 
   useEffect(() => {
+    const detectors = arucoDetectorsRef.current;
     const onVisibilityChange = () => {
-      if (document.hidden && controlsRef.current) {
+      if (
+        document.hidden &&
+        (controlsRef.current || rawStreamRef.current)
+      ) {
         stopCamera();
         setNotice('頁面離開前景，相機已停止。');
       }
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
+      cameraRunRef.current += 1;
       document.removeEventListener('visibilitychange', onVisibilityChange);
       controlsRef.current?.stop();
+      rawStreamRef.current?.getTracks().forEach((track) => track.stop());
+      if (arucoTimerRef.current !== null) {
+        window.clearTimeout(arucoTimerRef.current);
+      }
+      detectors.forEach((detectorPromise) => {
+        detectorPromise.then((detector) => detector.free()).catch(() => {});
+      });
       if (previewUrlRef.current) {
         URL.revokeObjectURL(previewUrlRef.current);
       }
@@ -435,7 +857,7 @@ export default function ScannerApp() {
             className={`mode-tab ${mode === option.id ? 'is-active' : ''}`}
             disabled={!option.available}
             key={option.id}
-            onClick={() => setMode(option.id)}
+            onClick={() => selectMode(option.id)}
             type="button"
           >
             {option.label}
@@ -445,6 +867,7 @@ export default function ScannerApp() {
 
       <div className="viewfinder">
         <video
+          autoPlay
           className={cameraState === 'scanning' ? 'scanner-media' : 'scanner-media is-hidden'}
           muted
           playsInline
@@ -502,6 +925,18 @@ export default function ScannerApp() {
       />
 
       <div className="scanner-controls">
+        {mode === 'aruco' ? (
+          <label className="camera-select aruco-family-select">
+            <span>ARUCO FAMILY</span>
+            <select value={arucoFamily} onChange={changeArucoFamily}>
+              {Object.entries(arucoFamilyLabels).map(([family, label]) => (
+                <option key={family} value={family}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         {devices.length > 1 ? (
           <label className="camera-select">
             <span>CAMERA</span>

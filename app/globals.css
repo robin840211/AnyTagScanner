@@ -371,6 +371,10 @@ button {
   margin-right: auto;
 }
 
+.aruco-family-select {
+  margin-right: 0;
+}
+
 .camera-select > span {
   color: #73807f;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

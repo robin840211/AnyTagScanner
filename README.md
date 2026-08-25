@@ -11,12 +11,14 @@ TagScanner 是一個以瀏覽器為入口的跨裝置視覺標記掃描器。相
 - QR Code、Micro QR、Data Matrix、Aztec、PDF417
 - EAN-8、EAN-13、UPC-A、UPC-E
 - Code 39、Code 93、Code 128、Codabar、ITF、RSS
+- ArUco Original 5×5 與 MIP 36h12
+- ArUco 相機及圖片多標記辨識、ID 與邊界顯示
 - 辨識邊界疊圖
 - 安全複製及 HTTP／HTTPS 網址開啟
 - 工作階段掃描紀錄與 JSON 匯出
 - 響應式手機、平板與桌面版面
 
-ArUco 與 AprilTag 模式目前已保留介面，辨識引擎仍在開發中。
+ArUco 功能目前標示為 Beta。AprilTag 模式已保留介面，辨識引擎仍在開發中。
 
 ## 隱私
 
@@ -33,6 +35,8 @@ ArUco 與 AprilTag 模式目前已保留介面，辨識引擎仍在開發中。
 - 本機開發可使用 localhost
 
 相機、手電筒、鏡頭標籤與安裝功能會依瀏覽器和裝置有所差異。沒有相機或相機權限時，仍可使用圖片辨識。
+
+ArUco 標記需要完整黑色外框與足夠留白；列印、反光、傾斜和低光會影響辨識結果。
 
 ## 本機使用
 
