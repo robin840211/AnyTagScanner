@@ -1,6 +1,6 @@
 # TagScanner
 
-TagScanner 是一個以瀏覽器為入口的跨裝置視覺標記掃描器。相機與圖片辨識都在目前裝置內執行，不需要上傳影像。
+TagScanner 使用瀏覽器相機或圖片辨識常用條碼與視覺標記。辨識在目前裝置內執行，不需要上傳影像。
 
 ## 目前功能
 
@@ -11,15 +11,18 @@ TagScanner 是一個以瀏覽器為入口的跨裝置視覺標記掃描器。相
 - QR Code、Micro QR、Data Matrix、Aztec、PDF417
 - EAN-8、EAN-13、UPC-A、UPC-E
 - Code 39、Code 93、Code 128、Codabar、ITF、RSS
-- ArUco Original 5×5 與 MIP 36h12
+- OpenCV `DICT_ARUCO_ORIGINAL` 與 `DICT_ARUCO_MIP_36h12`
 - ArUco 相機及圖片多標記辨識、ID 與邊界顯示
-- AprilTag tag36h11 相機及圖片多標記辨識
+- OpenCV `DICT_APRILTAG_36h11` 相機及圖片多標記辨識
+- 辨識結果顯示 OpenCV 字典名稱，並可複製 Python 偵測範例
 - 辨識邊界疊圖
 - 安全複製及 HTTP／HTTPS 網址開啟
 - 工作階段掃描紀錄與 JSON 匯出
 - 響應式手機、平板與桌面版面
 
-ArUco 與 AprilTag 功能目前標示為 Beta。AprilTag 第一版支援 tag36h11；其他 AprilTag 家族尚未加入。
+ArUco 與 AprilTag 功能目前標示為 Beta。主要建議使用 `DICT_ARUCO_ORIGINAL` 或 `DICT_APRILTAG_36h11`。MIP 36h12 保留作為既有相容選項。
+
+目前尚未支援 OpenCV 的 4×4、5×5、6×6、7×7 ArUco 字典，也未支援 AprilTag 16h5、25h9、36h10。介面不會將這些格式標示為可辨識。
 
 ## 隱私
 

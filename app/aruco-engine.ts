@@ -1,4 +1,20 @@
-export type ArucoFamily = 'ARUCO' | 'ARUCO_MIP_36h12';
+import type { OpenCvDictionaryName } from './opencv-reference';
+
+export const ARUCO_FAMILY_DEFINITIONS = {
+  ARUCO: {
+    label: 'Original 5×5',
+    opencvDictionary: 'DICT_ARUCO_ORIGINAL',
+  },
+  ARUCO_MIP_36h12: {
+    label: 'MIP 36h12（進階）',
+    opencvDictionary: 'DICT_ARUCO_MIP_36h12',
+  },
+} as const satisfies Record<
+  string,
+  { label: string; opencvDictionary: OpenCvDictionaryName }
+>;
+
+export type ArucoFamily = keyof typeof ARUCO_FAMILY_DEFINITIONS;
 
 export type ArucoMarker = {
   id: number;

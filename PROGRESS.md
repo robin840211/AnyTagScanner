@@ -18,10 +18,12 @@
 - 完成 tag36h11 AprilTag Web Worker／WebAssembly 相機與圖片辨識。
 - 固定 AprilTag 上游 commit、二進位校驗碼及 BSD 授權，移除執行階段 CDN 依賴。
 - 開發模式不註冊離線 Service Worker，並允許本機 loopback 預覽，避免舊版 HMR 資源干擾開發驗證。
+- 首頁與掃描器改為功能性文案，主要列出常用條碼及 OpenCV 相容標記。
+- ArUco／AprilTag 結果顯示 OpenCV 字典名稱，並提供可複製的 Python 偵測範例。
 
 ## Next
 
-- 評估支援 tagStandard41h12 等家族的完整 AprilTag 3 自行建置流程。
+- 評估 `DICT_4X4_50`、`DICT_5X5_100`、`DICT_6X6_250` 等常用 OpenCV ArUco 字典的瀏覽器引擎；未通過實測前不列為支援。
 - 完善離線快取版本策略、PWA 圖示與安裝流程。
 - 建立真實手機、列印標記與低光測試集。
 

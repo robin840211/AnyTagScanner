@@ -1,7 +1,7 @@
 {
   "name": "TagScanner",
   "short_name": "TagScanner",
-  "description": "跨裝置的 QR、條碼與視覺標記掃描器",
+  "description": "使用瀏覽器辨識常用條碼、ArUco 與 AprilTag",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

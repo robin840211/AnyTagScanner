@@ -1,7 +1,10 @@
 const supportedGroups = [
-  { label: '2D', value: 'QR · Data Matrix · PDF417 · Aztec' },
-  { label: '1D', value: 'EAN · UPC · Code 39/93/128 · ITF' },
-  { label: 'FID', value: 'ArUco Original / MIP 36h12 · AprilTag tag36h11' },
+  { label: '2D', value: 'QR Code · Data Matrix · PDF417' },
+  { label: '1D', value: 'EAN-8/13 · UPC-A/E · Code 128' },
+  {
+    label: 'TAG',
+    value: 'OpenCV ArUco Original · AprilTag 36h11',
+  },
 ];
 
 export default function Home() {
@@ -19,23 +22,23 @@ export default function Home() {
         </a>
         <div className="privacy-note">
           <span className="status-dot" aria-hidden="true" />
-          ON-DEVICE / NO UPLOAD
+          本機處理／不自動上傳
         </div>
       </header>
 
       <section className="hero" id="top">
         <div className="hero-copy">
           <div>
-            <p className="eyebrow">UNIVERSAL VISUAL CODE READER</p>
+            <p className="eyebrow">BROWSER TAG SCANNER</p>
             <h1>
-              ONE VIEW.
+              QR、條碼與
               <br />
-              <span>EVERY MARK.</span>
+              <span>視覺標記辨識</span>
             </h1>
           </div>
           <p className="intro">
-            現在可讀取 QR Code、常見條碼、ArUco 與 tag36h11
-            AprilTag。影像留在目前裝置，手機與電腦皆可直接使用。
+            使用相機或圖片辨識 QR Code、常見一維條碼、OpenCV ArUco
+            Original 與 AprilTag 36h11。影像只在目前裝置處理。
           </p>
         </div>
 
@@ -43,8 +46,8 @@ export default function Home() {
           <ScannerApp />
 
           <aside className="format-panel" aria-label="支援格式">
-            <p className="micro-label">SUPPORTED / 01</p>
-            <h2>一個入口，涵蓋多種標記。</h2>
+            <p className="micro-label">常用格式</p>
+            <h2>目前支援的辨識格式</h2>
             <div className="format-list">
               {supportedGroups.map((group) => (
                 <div className="format-row" key={group.label}>
@@ -56,8 +59,8 @@ export default function Home() {
             <div className="local-card">
               <span className="local-icon" aria-hidden="true">◎</span>
               <div>
-                <strong>LOCAL FIRST</strong>
-                <p>辨識在瀏覽器內完成，不自動傳送影像或掃描內容。</p>
+                <strong>本機處理</strong>
+                <p>相機與圖片辨識在瀏覽器內完成，不自動傳送內容。</p>
               </div>
             </div>
           </aside>

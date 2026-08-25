@@ -16,11 +16,18 @@ import {
   useState,
 } from 'react';
 import { AprilTagDetector } from './apriltag-engine';
-import { createArucoDetector } from './aruco-engine';
+import {
+  ARUCO_FAMILY_DEFINITIONS,
+  createArucoDetector,
+} from './aruco-engine';
 import type {
   ArucoDetector,
   ArucoFamily,
 } from './aruco-engine';
+import {
+  createOpenCvDetectionSnippet,
+} from './opencv-reference';
+import type { OpenCvDictionaryName } from './opencv-reference';
 import { isSafeWebUrl } from './scanner-utils';
 
 type ScannerMode = 'auto' | 'codes' | 'aruco' | 'apriltag';
@@ -32,6 +39,7 @@ type ScanEntry = {
   format: string;
   scannedAt: number;
   source: ScanSource;
+  opencvDictionary?: OpenCvDictionaryName;
 };
 
 type DetectionOverlay = {
@@ -48,20 +56,15 @@ type FiducialMarker = {
   corners: Array<{ x: number; y: number }>;
 };
 
-const arucoFamilyLabels: Record<ArucoFamily, string> = {
-  ARUCO: 'Original 5×5',
-  ARUCO_MIP_36h12: 'MIP 36h12',
-};
-
 const modeOptions: Array<{
   id: ScannerMode;
   label: string;
   available: boolean;
 }> = [
-  { id: 'auto', label: 'AUTO CODE', available: true },
-  { id: 'codes', label: 'QR / BARCODE', available: true },
-  { id: 'aruco', label: 'ARUCO · BETA', available: true },
-  { id: 'apriltag', label: 'APRILTAG · BETA', available: true },
+  { id: 'auto', label: '自動條碼', available: true },
+  { id: 'codes', label: 'QR／條碼', available: true },
+  { id: 'aruco', label: 'ArUco（Beta）', available: true },
+  { id: 'apriltag', label: 'AprilTag（Beta）', available: true },
 ];
 
 const cameraErrorMessages: Record<string, string> = {
@@ -91,6 +94,9 @@ export default function ScannerApp() {
   const [torchSupported, setTorchSupported] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'done' | 'error'>('idle');
+  const [pythonCopyState, setPythonCopyState] = useState<
+    'idle' | 'done' | 'error'
+  >('idle');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -221,13 +227,15 @@ export default function ScannerApp() {
       family: ArucoFamily,
     ) => {
       const now = Date.now();
-      const format = `ARUCO ${arucoFamilyLabels[family].toUpperCase()}`;
+      const familyDefinition = ARUCO_FAMILY_DEFINITIONS[family];
+      const format = `ARUCO ${familyDefinition.label.toUpperCase()}`;
       const entries = markers.map<ScanEntry>((marker) => ({
         id: `${now}-${family}-${marker.id}`,
         text: String(marker.id),
         format,
         scannedAt: now,
         source,
+        opencvDictionary: familyDefinition.opencvDictionary,
       }));
 
       setOverlay({
@@ -274,6 +282,7 @@ export default function ScannerApp() {
         format: 'APRILTAG 36H11',
         scannedAt: now,
         source,
+        opencvDictionary: 'DICT_APRILTAG_36h11',
       }));
 
       setOverlay({
@@ -390,7 +399,7 @@ export default function ScannerApp() {
         setCameraState('scanning');
         setNotice(
           scannerMode === 'aruco'
-            ? `搜尋 ${arucoFamilyLabels[arucoFamily]} 標記`
+            ? `搜尋 ${ARUCO_FAMILY_DEFINITIONS[arucoFamily].label} 標記`
             : '搜尋 tag36h11 AprilTag',
         );
         await refreshDevices();
@@ -689,7 +698,7 @@ export default function ScannerApp() {
             setOverlay(null);
             setNotice(
               mode === 'aruco'
-                ? `圖片中找不到 ${arucoFamilyLabels[arucoFamily]} ArUco 標記。`
+                ? `圖片中找不到 ${ARUCO_FAMILY_DEFINITIONS[arucoFamily].label} ArUco 標記。`
                 : '圖片中找不到 tag36h11 AprilTag。',
             );
             return;
@@ -793,6 +802,21 @@ export default function ScannerApp() {
     window.setTimeout(() => setCopyState('idle'), 1600);
   }, [lastResult]);
 
+  const copyOpenCvExample = useCallback(async () => {
+    if (!lastResult?.opencvDictionary) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(
+        createOpenCvDetectionSnippet(lastResult.opencvDictionary),
+      );
+      setPythonCopyState('done');
+    } catch {
+      setPythonCopyState('error');
+    }
+    window.setTimeout(() => setPythonCopyState('idle'), 1600);
+  }, [lastResult]);
+
   const openResult = useCallback(() => {
     if (!lastResult || !isSafeWebUrl(lastResult.text)) {
       return;
@@ -831,9 +855,9 @@ export default function ScannerApp() {
       setOverlay(null);
       setNotice(
         nextMode === 'aruco'
-          ? `支援 ${arucoFamilyLabels[arucoFamily]} ArUco 標記`
+          ? `OpenCV ${ARUCO_FAMILY_DEFINITIONS[arucoFamily].opencvDictionary}`
           : nextMode === 'apriltag'
-            ? '支援 tag36h11 AprilTag'
+            ? 'OpenCV DICT_APRILTAG_36h11'
             : '相機只會在你按下按鈕後啟用',
       );
     },
@@ -849,7 +873,9 @@ export default function ScannerApp() {
       setCameraState('off');
       setLastResult(null);
       setOverlay(null);
-      setNotice(`支援 ${arucoFamilyLabels[family]} ArUco 標記`);
+      setNotice(
+        `OpenCV ${ARUCO_FAMILY_DEFINITIONS[family].opencvDictionary}`,
+      );
     },
     [clearPreviewUrl, stopCamera],
   );
@@ -972,11 +998,11 @@ export default function ScannerApp() {
   const cameraStateLabel = useMemo(
     () =>
       ({
-        off: 'CAMERA OFF',
-        starting: 'STARTING',
-        scanning: 'SCANNING',
-        image: 'IMAGE MODE',
-        error: 'CHECK STATUS',
+        off: '相機關閉',
+        starting: '啟用中',
+        scanning: '掃描中',
+        image: '圖片模式',
+        error: '請查看狀態',
       })[cameraState],
     [cameraState],
   );
@@ -985,7 +1011,7 @@ export default function ScannerApp() {
     <section className="scanner-card" aria-labelledby="scanner-title">
       <div className="scanner-toolbar">
         <div>
-          <p className="micro-label">LIVE SCANNER</p>
+          <p className="micro-label">掃描器</p>
           <h2 id="scanner-title">
             {lastResult ? '辨識完成' : cameraState === 'scanning' ? '掃描中' : '準備掃描'}
           </h2>
@@ -1072,19 +1098,21 @@ export default function ScannerApp() {
       <div className="scanner-controls">
         {mode === 'aruco' ? (
           <label className="camera-select aruco-family-select">
-            <span>ARUCO FAMILY</span>
+            <span>ARUCO 字典</span>
             <select value={arucoFamily} onChange={changeArucoFamily}>
-              {Object.entries(arucoFamilyLabels).map(([family, label]) => (
+              {Object.entries(ARUCO_FAMILY_DEFINITIONS).map(
+                ([family, definition]) => (
                 <option key={family} value={family}>
-                  {label}
+                  {definition.label}
                 </option>
-              ))}
+                ),
+              )}
             </select>
           </label>
         ) : null}
         {devices.length > 1 ? (
           <label className="camera-select">
-            <span>CAMERA</span>
+            <span>相機</span>
             <select value={selectedDeviceId} onChange={handleDeviceChange}>
               {devices.map((device, index) => (
                 <option key={device.deviceId} value={device.deviceId}>
@@ -1147,6 +1175,29 @@ export default function ScannerApp() {
               </button>
             ) : null}
           </div>
+          {lastResult.opencvDictionary ? (
+            <details className="opencv-reference">
+              <summary>Python／OpenCV 對應</summary>
+              <div className="opencv-dictionary">
+                <span>字典</span>
+                <code>cv2.aruco.{lastResult.opencvDictionary}</code>
+              </div>
+              <pre>
+                <code>
+                  {createOpenCvDetectionSnippet(
+                    lastResult.opencvDictionary,
+                  )}
+                </code>
+              </pre>
+              <button onClick={copyOpenCvExample} type="button">
+                {pythonCopyState === 'done'
+                  ? '已複製 Python 範例'
+                  : pythonCopyState === 'error'
+                    ? '無法複製'
+                    : '複製 Python 範例'}
+              </button>
+            </details>
+          ) : null}
         </section>
       ) : null}
 
@@ -1154,7 +1205,7 @@ export default function ScannerApp() {
         <section className="history-panel" aria-labelledby="history-title">
           <div className="history-heading">
             <div>
-              <p className="micro-label">SESSION HISTORY</p>
+              <p className="micro-label">掃描紀錄</p>
               <h3 id="history-title">本次掃描</h3>
             </div>
             <div className="history-actions">
@@ -1186,8 +1237,8 @@ export default function ScannerApp() {
       ) : null}
 
       <div className="scanner-footer">
-        <span>MODE / {mode.toUpperCase()}</span>
-        <span>LOCAL PROCESSING</span>
+        <span>模式／{modeOptions.find((option) => option.id === mode)?.label}</span>
+        <span>本機處理</span>
       </div>
     </section>
   );

@@ -10,6 +10,8 @@ import { ARucoDetector, initSync } from '@ar-js-org/aruco-rs';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { isSafeWebUrl } from '../app/scanner-utils';
+import { ARUCO_FAMILY_DEFINITIONS } from '../app/aruco-engine';
+import { createOpenCvDetectionSnippet } from '../app/opencv-reference';
 
 describe('safe web URL validation', () => {
   it.each([
@@ -103,5 +105,21 @@ describe('ArUco WebAssembly integration', () => {
     const blankPixels = new Uint8Array(width * height * 4).fill(255);
     expect(mipDetector.detect_image(width, height, blankPixels)).toEqual([]);
     mipDetector.free();
+  });
+});
+
+describe('OpenCV compatibility reference', () => {
+  it('maps the browser ArUco families to explicit OpenCV dictionaries', () => {
+    expect(ARUCO_FAMILY_DEFINITIONS).toMatchObject({
+      ARUCO: { opencvDictionary: 'DICT_ARUCO_ORIGINAL' },
+      ARUCO_MIP_36h12: { opencvDictionary: 'DICT_ARUCO_MIP_36h12' },
+    });
+  });
+
+  it('creates a current ArucoDetector Python example', () => {
+    const snippet = createOpenCvDetectionSnippet('DICT_APRILTAG_36h11');
+    expect(snippet).toContain('cv2.aruco.DICT_APRILTAG_36h11');
+    expect(snippet).toContain('cv2.aruco.ArucoDetector(dictionary)');
+    expect(snippet).toContain('detector.detectMarkers(image)');
   });
 });

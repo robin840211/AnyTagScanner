@@ -13,9 +13,9 @@ const manifestUrl = new URL('manifest.webmanifest', siteUrl).toString();
 
 export const metadata: Metadata = {
   metadataBase: siteUrl,
-  title: 'TagScanner — QR、條碼與視覺標記掃描器',
+  title: 'TagScanner — QR、條碼、ArUco 與 AprilTag 辨識',
   description:
-    '在手機或電腦瀏覽器中辨識 QR Code、一般條碼、ArUco 與 tag36h11 AprilTag；影像只在目前裝置處理。',
+    '使用手機或電腦瀏覽器辨識 QR Code、常見條碼、OpenCV ArUco Original 與 AprilTag 36h11；影像只在目前裝置處理。',
   applicationName: 'TagScanner',
   manifest: manifestUrl,
   keywords: ['QR Code', 'Barcode', 'ArUco', 'AprilTag', 'Scanner'],
@@ -27,9 +27,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'zh_TW',
-    title: 'TagScanner — One view. Every mark.',
+    title: 'TagScanner — QR、條碼與視覺標記辨識',
     description:
-      '跨裝置辨識 QR Code、一般條碼、ArUco 與 tag36h11 AprilTag。',
+      '使用相機或圖片辨識 QR Code、常見條碼、ArUco Original 與 AprilTag 36h11。',
     url: siteUrl,
     siteName: 'TagScanner',
     images: [
@@ -37,14 +37,14 @@ export const metadata: Metadata = {
         url: socialImageUrl,
         width: 1792,
         height: 1024,
-        alt: 'TagScanner — One view. Every mark.',
+        alt: 'TagScanner 支援 QR、條碼、ArUco 與 AprilTag 辨識',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'TagScanner — One view. Every mark.',
-    description: '跨裝置的 QR、條碼與視覺標記掃描器。',
+    title: 'TagScanner — QR、條碼與視覺標記辨識',
+    description: '使用瀏覽器辨識常用條碼與 OpenCV 相容標記。',
     images: [socialImageUrl],
   },
 };
