@@ -1,0 +1,36 @@
+name: Bug report
+description: Report a reproducible TagScanner problem
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Do not include private scan contents, camera images, credentials, or unpatched security details.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What happened and what did you expect?
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Chrome 140, Safari 19, Firefox 142
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and operating system
+      placeholder: iPhone / iOS, Android phone, Windows laptop
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true

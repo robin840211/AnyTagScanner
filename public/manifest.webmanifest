@@ -1,0 +1,20 @@
+{
+  "name": "TagScanner",
+  "short_name": "TagScanner",
+  "description": "跨裝置的 QR、條碼與視覺標記掃描器",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090d11",
+  "theme_color": "#090d11",
+  "lang": "zh-Hant",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    {
+      "src": "og.png",
+      "sizes": "1792x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

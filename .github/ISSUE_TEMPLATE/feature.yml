@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest a format, workflow, or compatibility improvement
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: Describe what you need to scan or test.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: input
+    id: format
+    attributes:
+      label: Code or marker format
+      placeholder: QR Code, Code 128, ArUco 6x6, AprilTag 36h11
