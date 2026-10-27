@@ -1,5 +1,7 @@
 # TagScanner
 
+[開啟網站](https://robin840211.github.io/tagscanner/)
+
 TagScanner 使用瀏覽器相機或圖片辨識常用條碼與視覺標記。辨識在目前裝置內執行，不需要上傳影像。
 
 ## 目前功能
@@ -63,6 +65,14 @@ AprilTag 需使用 tag36h11 家族；其他家族即使外觀相近也不會得�
 靜態輸出位於 out。
 
 ## GitHub Pages
+
+正式網站為 https://robin840211.github.io/tagscanner/，發布流程位於 [tagscanner repository](https://github.com/robin840211/tagscanner)。原始碼持續在此 repo 維護。
+
+推送 `main` 後，發布 repo 每小時第 17、47 分鐘檢查版本，有更新時執行檢查、建置與發布。GitHub 排程可能延遲；需要立即發布時，至 [Publish TagScanner](https://github.com/robin840211/tagscanner/actions/workflows/publish.yml) 按 **Run workflow**，選擇 `main`。
+
+公開發布 repo 連續 60 天沒有活動時，GitHub 可能停用排程，可在 Actions 頁面重新啟用。
+
+### 在自己的 repo 發布
 
 1. 將 repository 建立為公開 repository。
 2. 推送 main 分支。
