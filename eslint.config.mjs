@@ -11,6 +11,9 @@ const eslintConfig = defineConfig([
     'build/**',
     'next-env.d.ts',
     'public/vendor/apriltag/apriltag_wasm.js',
+    'public/vendor/barcode/worker.js',
+    'outputs/**',
+    'work/**',
   ]),
 ]);
 

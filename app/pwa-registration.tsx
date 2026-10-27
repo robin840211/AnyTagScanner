@@ -21,6 +21,8 @@ export default function PwaRegistration() {
       .then((registration) => {
         const urls = [
           window.location.href,
+          new URL(`${basePath}/vendor/barcode/worker.js`, window.location.origin).href,
+          new URL(`${basePath}/vendor/barcode/zxing_reader.wasm`, window.location.origin).href,
           ...performance
             .getEntriesByType('resource')
             .map((entry) => entry.name),

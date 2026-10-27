@@ -1,5 +1,6 @@
-const CACHE_NAME = 'tagscanner-v4';
 const scopeUrl = new URL('./', self.registration.scope);
+const CACHE_PREFIX = 'tagscanner-' + scopeUrl.pathname + '-';
+const CACHE_NAME = CACHE_PREFIX + 'v6';
 const coreAssets = [
   scopeUrl.href,
   new URL('manifest.webmanifest', scopeUrl).href,
@@ -18,13 +19,16 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key !== CACHE_NAME)
-            .map((key) => caches.delete(key)),
-        ),
-      )
+      .then((keys) => Promise.all(keys.map(async (key) => {
+        if (key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME) {
+          await caches.delete(key);
+        } else if (/^tagscanner-v\d+$/.test(key)) {
+          const legacy = await caches.open(key);
+          const requests = await legacy.keys();
+          await Promise.all(requests.filter(request => request.url.startsWith(scopeUrl.href)).map(request => legacy.delete(request)));
+          if ((await legacy.keys()).length === 0) await caches.delete(key);
+        }
+      })))
       .then(() => self.clients.claim()),
   );
 });
@@ -49,13 +53,13 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           return response;
         })
-        .catch(() => caches.match(scopeUrl.href)),
+        .catch(() => caches.open(CACHE_NAME).then(cache => cache.match(scopeUrl.href))),
     );
     return;
   }
 
   event.respondWith(
-    caches.match(request).then((cached) => {
+    caches.open(CACHE_NAME).then(cache => cache.match(request)).then((cached) => {
       if (cached) {
         return cached;
       }

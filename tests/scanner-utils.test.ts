@@ -1,15 +1,7 @@
-import {
-  BarcodeFormat,
-  BinaryBitmap,
-  HybridBinarizer,
-  QRCodeWriter,
-  RGBLuminanceSource,
-} from '@zxing/library';
-import { BrowserMultiFormatReader } from '@zxing/browser';
 import { ARucoDetector, initSync } from '@ar-js-org/aruco-rs';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { isSafeWebUrl } from '../app/scanner-utils';
+import { isSafeWebUrl, paginateScanText } from '../app/scanner-utils';
 import { ARUCO_FAMILY_DEFINITIONS } from '../app/aruco-engine';
 import { createOpenCvDetectionSnippet } from '../app/opencv-reference';
 
@@ -25,31 +17,19 @@ describe('safe web URL validation', () => {
   });
 });
 
-describe('ZXing integration', () => {
-  it('round-trips a generated QR code through the browser reader', () => {
-    const expected = 'https://example.com/tagscanner';
-    const size = 256;
-    const matrix = new QRCodeWriter().encode(
-      expected,
-      BarcodeFormat.QR_CODE,
-      size,
-      size,
-      new Map(),
-    );
-    const luminances = new Uint8ClampedArray(size * size);
-
-    for (let y = 0; y < size; y += 1) {
-      for (let x = 0; x < size; x += 1) {
-        luminances[y * size + x] = matrix.get(x, y) ? 0 : 255;
-      }
-    }
-
-    const source = new RGBLuminanceSource(luminances, size, size);
-    const bitmap = new BinaryBitmap(new HybridBinarizer(source));
-    const result = new BrowserMultiFormatReader().decodeBitmap(bitmap);
-
-    expect(result.getBarcodeFormat()).toBe(BarcodeFormat.QR_CODE);
-    expect(result.getText()).toBe(expected);
+describe('result pagination', () => {
+  it('preserves line breaks within each viewport-sized page', () => {
+    expect(paginateScanText('BEGIN:VCARD\r\nFN:Robin\r\nEND:VCARD', true)).toEqual(['BEGIN:VCARD\nFN:Robin\nEND:VCARD']);
+    const lines = Array.from({ length: 20 }, (_, index) => 'Line ' + index);
+    const pages = paginateScanText(lines.join('\n'), true);
+    expect(pages.every(page => page.split('\n').length <= 3)).toBe(true);
+    expect(pages.join('\n')).toBe(lines.join('\n'));
+  });
+  it('bounds long wide-character text and preserves its content', () => {
+    const value = '辨識內容'.repeat(200);
+    const pages = paginateScanText(value, true);
+    expect(pages.every(page => Array.from(page).length <= 54)).toBe(true);
+    expect(pages.join('')).toBe(value);
   });
 });
 

@@ -9,17 +9,20 @@ TagScanner 使用瀏覽器相機或圖片辨識常用條碼與視覺標記。辨
 - 手機與電腦相機即時掃描
 - 後鏡頭優先與多相機切換
 - 支援時顯示手電筒控制
-- 圖片檔案辨識，檔案不會上傳
-- QR Code、Micro QR、Data Matrix、Aztec、PDF417
+- 圖片檔案辨識
+- QR Code、Data Matrix、Aztec、PDF417；Micro QR／rMQR 可於擴充格式開啟
 - EAN-8、EAN-13、UPC-A、UPC-E
-- Code 39、Code 93、Code 128、Codabar、ITF、RSS
+- Code 39、Code 93、Code 128、Codabar、ITF；DataBar（RSS）可於擴充格式開啟
+- QR 與條碼合併辨識，或分別選擇 QR／條碼模式
+- 支援旋轉、反相與具足夠色彩對比的條碼
+- 掃描中直接切換模式，相機保持開啟
 - OpenCV `DICT_ARUCO_ORIGINAL` 與 `DICT_ARUCO_MIP_36h12`
 - ArUco 相機及圖片多標記辨識、ID 與邊界顯示
 - OpenCV `DICT_APRILTAG_36h11` 相機及圖片多標記辨識
 - 辨識結果顯示 OpenCV 字典名稱，並可複製 Python 偵測範例
-- 辨識邊界疊圖
+- 四角辨識邊界疊圖；標記離開畫面後框線自動消失
 - 安全複製及 HTTP／HTTPS 網址開啟
-- 工作階段掃描紀錄與 JSON 匯出
+- 工作階段最近 100 筆掃描紀錄與 JSON 匯出；持續出現的同一標記保留一筆
 - 響應式手機、平板與桌面版面
 
 ArUco 與 AprilTag 功能目前標示為 Beta。主要建議使用 `DICT_ARUCO_ORIGINAL` 或 `DICT_APRILTAG_36h11`。MIP 36h12 保留作為既有相容選項。
@@ -68,7 +71,7 @@ AprilTag 需使用 tag36h11 家族；其他家族即使外觀相近也不會得�
 
 正式網站為 https://robin840211.github.io/tagscanner/，發布流程位於 [tagscanner repository](https://github.com/robin840211/tagscanner)。原始碼持續在此 repo 維護。
 
-推送 `main` 後，發布 repo 每小時第 17、47 分鐘檢查版本，有更新時執行檢查、建置與發布。GitHub 排程可能延遲；需要立即發布時，至 [Publish TagScanner](https://github.com/robin840211/tagscanner/actions/workflows/publish.yml) 按 **Run workflow**，選擇 `main`。
+推送 `main` 後，發布 repo 每 7 天（台灣時間週一 03:17）檢查版本，有更新時執行檢查、建置與發布。GitHub 排程可能延遲；需要立即發布時，至 [Publish TagScanner](https://github.com/robin840211/tagscanner/actions/workflows/publish.yml) 按 **Run workflow**，選擇 `main`。
 
 公開發布 repo 連續 60 天沒有活動時，GitHub 可能停用排程，可在 Actions 頁面重新啟用。
 

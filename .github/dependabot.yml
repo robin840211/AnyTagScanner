@@ -17,6 +17,7 @@ updates:
       zxing:
         patterns:
           - '@zxing/*'
+          - zxing-wasm
       tailwind:
         patterns:
           - tailwindcss

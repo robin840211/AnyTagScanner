@@ -151,12 +151,8 @@ export class AprilTagDetector {
     if (this.closed) {
       return;
     }
-    void this.request('destroy')
-      .catch(() => undefined)
-      .finally(() => {
-        this.closed = true;
-        this.rejectPending(new Error('AprilTag detector is closed'));
-        this.worker.terminate();
-      });
+    this.closed = true;
+    this.rejectPending(new Error('AprilTag detector is closed'));
+    this.worker.terminate();
   }
 }
