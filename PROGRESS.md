@@ -35,3 +35,18 @@
 - 清晰 QR 與常見條碼可在手機及桌面瀏覽器完成辨識。
 - 合成 ArUco 標記可由 WebAssembly 引擎解碼，並在 GitHub Pages 子路徑載入。
 - 合成 tag36h11 AprilTag 可由獨立 Worker 解碼，且不連線第三方 CDN。
+
+## 2026-10-27 handoff assessment
+
+- Goal: read the complete chat handoff, remove chat_tmp.txt as explicitly requested, and assess readiness for GitHub Pages testing.
+- Scope: inspect sources and existing checks; retain pre-existing changes; no feature implementation or remote publication.
+- Handoff: core QR/barcode, ArUco Original/MIP, and AprilTag tag36h11 scanning is implemented; common OpenCV dictionaries, PWA assets, and physical-device testing remain follow-ups.
+- Initial state: HEAD 4a47f01; no Git remote. Existing apriltag_wasm.js change is CRLF-only (normalized text equals HEAD); working-file SHA-256 matches SOURCE.md, committed LF bytes have a different checksum. Preserve this change for separate provenance handling.
+- Coordination: root owns PROGRESS.md and the authorized chat_tmp.txt removal. Fable discuss request tagscanner-readiness-20261027-01 is read-only, conversation context, no file ownership; validates assessment and next-step priorities. Requested model fable / medium; completed; observed model and evidence below.
+- Quota: official Claude observation 2026-10-27T09:26:22.082Z, five-hour utilization 18%, seven-day 5%, allowed.
+- Verification: bundled Node v24.19.0; lint PASS, typecheck PASS, tests 15/15 PASS, production static export with /tagscanner base path PASS. Eleven referenced subpath assets resolved in out; .nojekyll, service worker, manifest, AprilTag worker/JS/WASM, and bundled ArUco WASM are present. Exported AprilTag bytes match the working files.
+- Whitespace check: full git diff --check reports 21 CRLF trailing-whitespace entries in the pre-existing vendor JS; no logical difference. This assessment leaves the vendor file unchanged and unstaged.
+- Discussion: job 83a7e6d6ffe0f9547fc548279a70c110, session 1d839fbc-3356-42f0-ade2-99d78db12e5c, gate PASS; requested fable / medium, observed claude-fable-5-1, no observed fallback. Evidence: D:/AgentData/claude-bridge/state/jobs/83a7e6d6ffe0f9547fc548279a70c110/. Root accepts prototype readiness and follow-up priorities. Workflow already derives base path from repository name; actual hosted asset loading remains a deployment check. Existing project rules require committing this progress record. Device-dependent camera/torch behavior remains subject to physical-device testing.
+- Outcome: current functionality is suitable for GitHub Pages prototype testing. Publishing requires a selected remote repository and Pages configuration. Reconcile vendor line-ending policy and SOURCE.md checksum when preparing publication; this discrepancy does not change JavaScript behavior.
+- Next priorities: Android/iPhone camera permissions, start/stop/background/restart and image decoding; printed ArUco Original and AprilTag 36h11 under perspective/low light; production offline/update behavior. Common OpenCV dictionary expansion and PWA/social assets can follow device feedback.
+- Scope completed: chat_tmp.txt was untracked, read and removed at the user's request; source features unchanged; no remote push. This run supplies local automated/build evidence; browser and physical-device results remain from the earlier handoff or pending.
