@@ -17,7 +17,7 @@
     "@ar-js-org/aruco-rs": "0.1.0",
     "@zxing/browser": "0.2.0",
     "@zxing/library": "0.22.0",
-    "next": "16.3.2",
+    "next": "16.4.3",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
