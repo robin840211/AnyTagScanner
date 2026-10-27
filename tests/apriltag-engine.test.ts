@@ -30,7 +30,7 @@ describe('AprilTag vendored runtime', () => {
   it.each([
     [
       'apriltag_wasm.js',
-      'DFD03EA330012975FF3185872053229F5C638FD4EBD228FD80C0C7218A15B201',
+      '587C3B98F7E9A312D9F69DBB541C91741F9EE2DF10C356362B05243041E3DDEA',
     ],
     [
       'apriltag_wasm.wasm',

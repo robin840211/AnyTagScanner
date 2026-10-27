@@ -2,10 +2,10 @@ import {
   BarcodeFormat,
   BinaryBitmap,
   HybridBinarizer,
-  MultiFormatReader,
   QRCodeWriter,
   RGBLuminanceSource,
 } from '@zxing/library';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 import { ARucoDetector, initSync } from '@ar-js-org/aruco-rs';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -26,7 +26,7 @@ describe('safe web URL validation', () => {
 });
 
 describe('ZXing integration', () => {
-  it('round-trips a generated QR code', () => {
+  it('round-trips a generated QR code through the browser reader', () => {
     const expected = 'https://example.com/tagscanner';
     const size = 256;
     const matrix = new QRCodeWriter().encode(
@@ -46,7 +46,7 @@ describe('ZXing integration', () => {
 
     const source = new RGBLuminanceSource(luminances, size, size);
     const bitmap = new BinaryBitmap(new HybridBinarizer(source));
-    const result = new MultiFormatReader().decode(bitmap);
+    const result = new BrowserMultiFormatReader().decodeBitmap(bitmap);
 
     expect(result.getBarcodeFormat()).toBe(BarcodeFormat.QR_CODE);
     expect(result.getText()).toBe(expected);
