@@ -109,3 +109,8 @@
 - Publisher Opus review a46fc9f4d33ccf9c9cfad995b6dd7e3c passed with observed claude-opus-5-5 and no required fixes. Initial deployment run 40571152334 passed all jobs, publishing source 6f12af0 from publisher ba063df. Lowercase homepage and 15 assets returned 200; live build.json matched immutable commits, and browser page rendered without captured warnings/errors.
 - Canonical website: https://robin840211.github.io/tagscanner/. Both descriptions/homepage fields verified; original AnyTagScanner website remains available. Publisher checkout and detailed operational record: D:/GitProject/tagscanner-pages. Scheduled skip behavior has static review; actual schedule timing remains subject to GitHub scheduling.
 - Dependabot explanation verified from GitHub events/comments: #1-6/#8-9 were manually closed after main already incorporated their updates; #7/#10 were closed by dependabot[bot] after configured version exclusions. Bot wording "no longer being updated" refers here to excluded versions, not permanent upstream retirement. ESLint 9.39.5 and TypeScript 6.0.3 remain supported selections; weekly checks continue outside excluded ranges.
+
+## 2026-10-28 Single-repository consolidation
+
+- User requested a single repository with the simple URL. Renamed the publisher repository to tagscanner-publisher-old and archived it (kept, not deleted), then renamed AnyTagScanner to robin840211/tagscanner. Pages workflow derives the base path from the repository name, so no code change was needed.
+- Canonical website: https://robin840211.github.io/tagscanner/. The old /AnyTagScanner/ URL no longer resolves. The weekly publisher schedule is retired; main pushes deploy directly. Local origin updated.

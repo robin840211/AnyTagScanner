@@ -69,11 +69,7 @@ AprilTag 需使用 tag36h11 家族；其他家族即使外觀相近也不會得�
 
 ## GitHub Pages
 
-正式網站為 https://robin840211.github.io/tagscanner/，發布流程位於 [tagscanner repository](https://github.com/robin840211/tagscanner)。原始碼持續在此 repo 維護。
-
-推送 `main` 後，發布 repo 每 7 天（台灣時間週一 03:17）檢查版本，有更新時執行檢查、建置與發布。GitHub 排程可能延遲；需要立即發布時，至 [Publish TagScanner](https://github.com/robin840211/tagscanner/actions/workflows/publish.yml) 按 **Run workflow**，選擇 `main`。
-
-公開發布 repo 連續 60 天沒有活動時，GitHub 可能停用排程，可在 Actions 頁面重新啟用。
+正式網站為 https://robin840211.github.io/tagscanner/。推送 `main` 後，Deploy GitHub Pages workflow 會驗證、建置並自動發布；也可在 Actions 頁面手動執行（Run workflow）。
 
 ### 在自己的 repo 發布
 
